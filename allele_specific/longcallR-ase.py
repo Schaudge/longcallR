@@ -627,8 +627,8 @@ def analyze_ase_genes(annotation_file, bam_file, out_file, threads, gene_types, 
             idx = pass_idx[pi]
             gene_name, chrom, p_value, ps, h1, h2 = results[idx]
             p_value = adjusted_p_values[pi]
-            logfc = math.log2((h1 + 1) / (h2 + 1))
-            f.write(f"{gene_name}\t{chrom}\t{ps}\t{h1}\t{h2}\t{p_value}\t{logfc}\n")
+            logFC = math.log2((h1 + 1) / (h2 + 1))
+            f.write(f"{gene_name}\t{chrom}\t{ps}\t{h1}\t{h2}\t{p_value}\t{logFC}\n")
 
 
 def analyze_ase_genes_pat_mat(annotation_file, bam_file, vcf_file1, vcf_file2, out_file, threads, gene_types,
@@ -667,8 +667,8 @@ def analyze_ase_genes_pat_mat(annotation_file, bam_file, vcf_file1, vcf_file2, o
             idx = pass_idx[pi]
             gene_name, chrom, p_value, ps, h1, h2, h1_pat, h1_mat, h2_pat, h2_mat = results[idx]
             p_value = adjusted_p_values[pi]
-            logfc = math.log2((h1 + 1) / (h2 + 1))
-            f.write(f"{gene_name}\t{chrom}\t{ps}\t{h1}\t{h2}\t{p_value}\t{h1_pat}\t{h1_mat}\t{h2_pat}\t{h2_mat}\t{logfc}\n")
+            logFC = math.log2((h1 + 1) / (h2 + 1))
+            f.write(f"{gene_name}\t{chrom}\t{ps}\t{h1}\t{h2}\t{p_value}\t{h1_pat}\t{h1_mat}\t{h2_pat}\t{h2_mat}\t{logFC}\n")
 
 
 def analyze_ase_genes_with_filtering(annotation_file, bam_file, vcf_file1, vcf_file3, out_file, threads, gene_types,
@@ -707,8 +707,8 @@ def analyze_ase_genes_with_filtering(annotation_file, bam_file, vcf_file1, vcf_f
             idx = pass_idx[pi]
             gene_name, chrom, p_value, ps, h1, h2 = results[idx]
             p_value = adjusted_p_values[pi]
-            logfc = math.log2((h1 + 1) / (h2 + 1))
-            f.write(f"{gene_name}\t{chrom}\t{ps}\t{h1}\t{h2}\t{p_value}\t{logfc}\n")
+            logFC = math.log2((h1 + 1) / (h2 + 1))
+            f.write(f"{gene_name}\t{chrom}\t{ps}\t{h1}\t{h2}\t{p_value}\t{logFC}\n")
 
 
 if __name__ == "__main__":
