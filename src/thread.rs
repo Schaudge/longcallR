@@ -344,15 +344,21 @@ pub fn run(
                     continue;
                 }
                 let qname = std::str::from_utf8(record.qname()).unwrap().to_string();
-                if read_assignments.contains_key(&qname) {
-                    let asg = read_assignments.get(&qname).unwrap();
+                // if read_assignments.contains_key(&qname) {
+                //     let asg = read_assignments.get(&qname).unwrap();
+                //     if *asg != 0 {
+                //         let _ = record.push_aux(b"HP:i", Aux::I32(*asg));
+                //     }
+                // }
+                // if read_phasesets.contains_key(&qname) {
+                //     let ps = read_phasesets.get(&qname).unwrap();
+                //     let _ = record.push_aux(b"PS:i", Aux::U32(*ps));
+                // }
+                if let (Some(asg), Some(ps)) = (read_assignments.get(&qname), read_phasesets.get(&qname)) {
                     if *asg != 0 {
                         let _ = record.push_aux(b"HP:i", Aux::I32(*asg));
+                        let _ = record.push_aux(b"PS:i", Aux::U32(*ps));
                     }
-                }
-                if read_phasesets.contains_key(&qname) {
-                    let ps = read_phasesets.get(&qname).unwrap();
-                    let _ = record.push_aux(b"PS:i", Aux::U32(*ps));
                 }
                 let _ = bam_writer.write(&record).unwrap();
             }
