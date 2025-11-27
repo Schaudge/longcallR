@@ -11,6 +11,7 @@ python longcallR-ase.py
 --gene_types <gene_types>
 --min_support <min_support>
 ```
+
 + -b, --bam: longcallR phased bam file
 + -a, --annotation: Annotation file GTF for GFF3 format
 + -o, --output: Prefix of output files
@@ -31,6 +32,7 @@ python longcallR-ase.py
 --gene_types <gene_types>
 --min_support <min_support>
 ```
+
 + --vcf1: LongcallR phased vcf file
 + --vcf3: DNA vcf file
 
@@ -47,6 +49,7 @@ python longcallR-ase.py
 --gene_types <gene_types>
 --min_support <min_support>
 ```
+
 + --vcf1: LongcallR phased vcf file
 + --vcf2: Whole genome haplotype phased DNA vcf file
 

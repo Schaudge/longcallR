@@ -12,6 +12,7 @@ python longcallR-asj.py
 -g <gene_types>
 -m <min_sup>
 ```
+
 + -b, --bam_file: longcallR phased bam file
 + -a, --annotation_file: Annotation file GTF for GFF3 format
 + -f, --reference: Reference genome file
@@ -34,6 +35,7 @@ python longcallR-asj.py
 -g <gene_types>
 -m <min_sup>
 ```
+
 + --dna_vcf: DNA vcf file
 + --rna_vcf: longcallR phased RNA vcf file
 
@@ -42,6 +44,7 @@ To visualize allele-specific junctions in IGV, extract regions with a p-value be
 ```
 python asj_to_bed.py output.asj.tsv [p_value_threshold] > output.asj.bed
 ```
+
 - output.asj.tsv: Input file containing allele-specific junctions
 - p_value_threshold (optional): Significance threshold (default: 1e-10)
 - output.asj.bed: Output BED file for IGV visualization
