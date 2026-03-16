@@ -249,88 +249,90 @@ pub fn run(
             }
         });
     });
-    let mut vf = File::create(output_vcf_file).unwrap();
-    vf.write("##fileformat=VCFv4.3\n".as_bytes()).unwrap();
-    for ctglen in contig_lengths.iter() {
-        let chromosome = ctglen.0.clone();
-        let chromosome_len = ctglen.1.clone();
-        vf.write(format!("##contig=<ID={},length={}>\n", chromosome, chromosome_len).as_bytes())
-            .unwrap();
-    }
-    vf.write("##FILTER=<ID=PASS,Description=\"All filters passed\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FILTER=<ID=LowQual,Description=\"Low phasing quality\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FILTER=<ID=HomRef,Description=\"Homo reference\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FILTER=<ID=RnaEdit,Description=\"RNA editing\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FILTER=<ID=Multiallelic,Description=\"Multiallelic SNP\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FILTER=<ID=dn,Description=\"Dense cluster of variants\">\n".as_bytes())
-        .unwrap();
-    vf.write("##INFO=<ID=RDS,Number=1,Type=String,Description=\"RNA editing or Dense SNP or Single SNP.\">\n".as_bytes()).unwrap();
-    vf.write("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FORMAT=<ID=PS,Number=1,Type=Integer,Description=\"Phase Set\">\n".as_bytes())
-        .unwrap();
-    vf.write(
-        "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">\n".as_bytes(),
-    )
-    .unwrap();
-    vf.write("##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FORMAT=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FORMAT=<ID=PQ,Number=1,Type=Float,Description=\"Phasing Quality\">\n".as_bytes())
-        .unwrap();
-    vf.write("##FORMAT=<ID=AE,Number=A,Type=Integer,Description=\"Haplotype expression of two alleles\">\n".as_bytes()).unwrap();
-    vf.write("##FORMAT=<ID=SQ,Number=1,Type=Float,Description=\"Somatic Score\">\n".as_bytes())
-        .unwrap();
-    vf.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n".as_bytes())
-        .unwrap();
-
-    for rd in vcf_records_queue.lock().unwrap().iter() {
-        if rd.alternative.len() == 1 {
-            vf.write(
-                format!(
-                    "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-                    &rd.chromosome,
-                    rd.position,
-                    std::str::from_utf8(&rd.id).unwrap(),
-                    std::str::from_utf8(&rd.reference).unwrap(),
-                    std::str::from_utf8(&rd.alternative[0]).unwrap(),
-                    rd.qual,
-                    std::str::from_utf8(&rd.filter).unwrap(),
-                    std::str::from_utf8(&rd.info).unwrap(),
-                    std::str::from_utf8(&rd.format).unwrap(),
-                    rd.genotype
-                )
-                .as_bytes(),
-            )
-            .unwrap();
-        } else if rd.alternative.len() == 2 {
-            vf.write(
-                format!(
-                    "{}\t{}\t{}\t{}\t{},{}\t{}\t{}\t{}\t{}\t{}\n",
-                    &rd.chromosome,
-                    rd.position,
-                    std::str::from_utf8(&rd.id).unwrap(),
-                    std::str::from_utf8(&rd.reference).unwrap(),
-                    std::str::from_utf8(&rd.alternative[0]).unwrap(),
-                    std::str::from_utf8(&rd.alternative[1]).unwrap(),
-                    rd.qual,
-                    std::str::from_utf8(&rd.filter).unwrap(),
-                    std::str::from_utf8(&rd.info).unwrap(),
-                    std::str::from_utf8(&rd.format).unwrap(),
-                    rd.genotype
-                )
-                .as_bytes(),
-            )
-            .unwrap();
+    if !direct_haplotag_from_vcf {
+        let mut vf = File::create(output_vcf_file).unwrap();
+        vf.write("##fileformat=VCFv4.3\n".as_bytes()).unwrap();
+        for ctglen in contig_lengths.iter() {
+            let chromosome = ctglen.0.clone();
+            let chromosome_len = ctglen.1.clone();
+            vf.write(format!("##contig=<ID={},length={}>\n", chromosome, chromosome_len).as_bytes())
+                .unwrap();
         }
+        vf.write("##FILTER=<ID=PASS,Description=\"All filters passed\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FILTER=<ID=LowQual,Description=\"Low phasing quality\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FILTER=<ID=HomRef,Description=\"Homo reference\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FILTER=<ID=RnaEdit,Description=\"RNA editing\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FILTER=<ID=Multiallelic,Description=\"Multiallelic SNP\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FILTER=<ID=dn,Description=\"Dense cluster of variants\">\n".as_bytes())
+            .unwrap();
+        vf.write("##INFO=<ID=RDS,Number=1,Type=String,Description=\"RNA editing or Dense SNP or Single SNP.\">\n".as_bytes()).unwrap();
+        vf.write("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FORMAT=<ID=PS,Number=1,Type=Integer,Description=\"Phase Set\">\n".as_bytes())
+            .unwrap();
+        vf.write(
+            "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">\n".as_bytes(),
+        )
+        .unwrap();
+        vf.write("##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FORMAT=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FORMAT=<ID=PQ,Number=1,Type=Float,Description=\"Phasing Quality\">\n".as_bytes())
+            .unwrap();
+        vf.write("##FORMAT=<ID=AE,Number=A,Type=Integer,Description=\"Haplotype expression of two alleles\">\n".as_bytes()).unwrap();
+        vf.write("##FORMAT=<ID=SQ,Number=1,Type=Float,Description=\"Somatic Score\">\n".as_bytes())
+            .unwrap();
+        vf.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n".as_bytes())
+            .unwrap();
+
+        for rd in vcf_records_queue.lock().unwrap().iter() {
+            if rd.alternative.len() == 1 {
+                vf.write(
+                    format!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+                        &rd.chromosome,
+                        rd.position,
+                        std::str::from_utf8(&rd.id).unwrap(),
+                        std::str::from_utf8(&rd.reference).unwrap(),
+                        std::str::from_utf8(&rd.alternative[0]).unwrap(),
+                        rd.qual,
+                        std::str::from_utf8(&rd.filter).unwrap(),
+                        std::str::from_utf8(&rd.info).unwrap(),
+                        std::str::from_utf8(&rd.format).unwrap(),
+                        rd.genotype
+                    )
+                    .as_bytes(),
+                )
+                .unwrap();
+            } else if rd.alternative.len() == 2 {
+                vf.write(
+                    format!(
+                        "{}\t{}\t{}\t{}\t{},{}\t{}\t{}\t{}\t{}\t{}\n",
+                        &rd.chromosome,
+                        rd.position,
+                        std::str::from_utf8(&rd.id).unwrap(),
+                        std::str::from_utf8(&rd.reference).unwrap(),
+                        std::str::from_utf8(&rd.alternative[0]).unwrap(),
+                        std::str::from_utf8(&rd.alternative[1]).unwrap(),
+                        rd.qual,
+                        std::str::from_utf8(&rd.filter).unwrap(),
+                        std::str::from_utf8(&rd.info).unwrap(),
+                        std::str::from_utf8(&rd.format).unwrap(),
+                        rd.genotype
+                    )
+                    .as_bytes(),
+                )
+                .unwrap();
+            }
+        }
+        drop(vf);
     }
-    drop(vf);
 
     if !no_bam_output {
         let mut read_assignments: HashMap<String, i32> = HashMap::new();
