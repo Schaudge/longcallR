@@ -53,6 +53,40 @@ pub struct Edge {
 }
 
 impl SNPFrag {
+    pub fn seed_haplotag_from_phased_snps(&mut self) {
+        for fragment in self.fragments.iter_mut() {
+            if !fragment.for_phasing {
+                continue;
+            }
+            let mut support_h1 = 0_u32;
+            let mut support_h2 = 0_u32;
+            for fe in fragment.list.iter() {
+                if !self.candidate_snps[fe.snp_idx].for_phasing {
+                    continue;
+                }
+                if self.candidate_snps[fe.snp_idx].genotype != 0 {
+                    continue;
+                }
+                let snp_haplotype = self.candidate_snps[fe.snp_idx].haplotype;
+                if snp_haplotype == 0 || fe.p == 0 {
+                    continue;
+                }
+                if snp_haplotype * fe.p > 0 {
+                    support_h1 += 1;
+                } else {
+                    support_h2 += 1;
+                }
+            }
+            fragment.haplotag = if support_h1 > support_h2 {
+                1
+            } else if support_h2 > support_h1 {
+                -1
+            } else {
+                0
+            };
+        }
+    }
+
     pub fn get_somatic_haplotype_baseqs(&mut self, bam_path: &str, region: &Region, phased_fragments: &HashMap<String, i32>) {
         let mut bam_reader: bam::IndexedReader = bam::IndexedReader::from_path(bam_path).unwrap();
         bam_reader.fetch((region.chr.as_str(), region.start, region.end)).unwrap();

@@ -395,6 +395,7 @@ pub struct GenotypeAndQuality {
     pub genotype: u8, // 1 for 0/1, 2 for 1/1, 3 for 1/2
     pub(crate) quality: f32,
     pub phased: bool,
+    pub haplotype: i32, // 1 for 0|1, -1 for 1|0, 0 otherwise
 }
 
 pub fn get_genotype_quality_phase_from_vcf(
@@ -408,17 +409,21 @@ pub fn get_genotype_quality_phase_from_vcf(
         let chr = std::str::from_utf8(record.header().rid2name(rid).unwrap()).unwrap();
         let pos = record.pos(); // 0-based position
         let qual = record.qual();
-        let mut phased = false;
         let sample_count = usize::try_from(record.sample_count()).unwrap();
         let gts = record.genotypes().expect("Error reading genotypes");
         for sample_index in 0..sample_count {
+            let mut phased = false;
             let gt = gts.get(sample_index);
             if gt.len() != 2 {
                 // Skip records that don't have two alleles.
                 continue;
             }
             let gt0 = match gt[0] {
-                GenotypeAllele::Unphased(n) | GenotypeAllele::Phased(n) => n,
+                GenotypeAllele::Unphased(n) => n,
+                GenotypeAllele::Phased(n) => {
+                    phased = true;
+                    n
+                }
                 GenotypeAllele::UnphasedMissing | GenotypeAllele::PhasedMissing => 3,
             };
             // For gt[1], update `phased` if the allele is phased.
@@ -443,12 +448,23 @@ pub fn get_genotype_quality_phase_from_vcf(
                 _ => 4,               // Other cases
             };
 
+            let haplotype = if phased {
+                match (gt0, gt1) {
+                    (0, 1) => 1,
+                    (1, 0) => -1,
+                    _ => 0,
+                }
+            } else {
+                0
+            };
+
             genotype_quality.entry(chr.to_string()).or_default().insert(
                 pos as usize,
                 GenotypeAndQuality {
                     genotype,
                     quality: qual,
                     phased,
+                    haplotype,
                 },
             );
 

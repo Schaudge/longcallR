@@ -45,6 +45,7 @@ pub fn run(
     min_phase_score: f32,
     max_enum_snps: usize,
     read_assignment_cutoff: f64,
+    direct_haplotag_from_vcf: bool,
     no_bam_output: bool,
     low_allele_frac_cutoff: f32,
     low_allele_cnt_cutoff: u32,
@@ -112,6 +113,7 @@ pub fn run(
                         ref_seq,
                         chr_candidates_genotype_quality,
                         0.0,
+                        direct_haplotag_from_vcf,
                     );
                 }
             } else {
@@ -157,6 +159,32 @@ pub fn run(
                     apply_downsampling);
             }
             // snpfrag.clean_fragments();
+
+            if direct_haplotag_from_vcf {
+                snpfrag.seed_haplotag_from_phased_snps();
+                let read_assignments = snpfrag.assign_reads_haplotype(read_assignment_cutoff, apply_downsampling);
+                let phase_sets = snpfrag.assign_phase_set(0.0);
+
+                if !no_bam_output {
+                    let mut queue = read_haplotag_queue.lock().unwrap();
+                    for a in read_assignments.iter() {
+                        queue.push_back((a.0.clone(), a.1.clone()));
+                    }
+                    let mut queue = read_phaseset_queue.lock().unwrap();
+                    for a in phase_sets.iter() {
+                        queue.push_back((a.0.clone(), a.1.clone()));
+                    }
+                }
+
+                let vcf_records = snpfrag.output_phased_vcf(min_phase_score);
+                {
+                    let mut queue = vcf_records_queue.lock().unwrap();
+                    for rd in vcf_records.iter() {
+                        queue.push_back(rd.clone());
+                    }
+                }
+                return;
+            }
 
             unsafe {
                 snpfrag.init_haplotypes();

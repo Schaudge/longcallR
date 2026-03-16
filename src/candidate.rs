@@ -533,6 +533,7 @@ impl SNPFrag {
         ref_seq: &Vec<u8>,
         chr_candidates_genotype_quality: &HashMap<usize, GenotypeAndQuality>,
         min_variant_qual: f32,
+        use_input_phasing: bool,
     ) {
         let pileup = &profile.freq_vec;
         let mut position = profile.region.start - 1; // 0-based
@@ -575,7 +576,15 @@ impl SNPFrag {
                         // 0|1
                         candidate_snp.variant_type = 1;
                         candidate_snp.genotype = 0;
-                        candidate_snp.for_phasing = true;
+                        if use_input_phasing {
+                            candidate_snp.haplotype = genotype_quality.haplotype;
+                            candidate_snp.for_phasing = genotype_quality.haplotype != 0;
+                            if genotype_quality.haplotype != 0 {
+                                candidate_snp.phase_score = genotype_quality.quality as f64;
+                            }
+                        } else {
+                            candidate_snp.for_phasing = true;
+                        }
                         candidate_snp.het_var = true;
                         self.candidate_snps.push(candidate_snp);
                         self.het_snps.push(self.candidate_snps.len() - 1);

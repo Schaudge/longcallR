@@ -179,6 +179,10 @@ struct Args {
     #[arg(long, action = ArgAction::SetTrue, default_value = "false")]
     no_bam_output: bool,
 
+    /// When set, directly haplotag reads from a pre-phased input VCF without re-phasing SNPs
+    #[arg(long, action = ArgAction::SetTrue, default_value = "false")]
+    direct_haplotag: bool,
+
     /// When set, show all regions to be processed
     #[clap(long, action = ArgAction::SetTrue, default_value = "false")]
     get_blocks: bool,
@@ -239,6 +243,7 @@ fn main() {
 
     let get_blocks = arg.get_blocks;
     let no_bam_output = arg.no_bam_output;
+    let direct_haplotag = arg.direct_haplotag;
     let downsample = arg.downsample;
     let truncation = arg.truncation;
     let exon_only = arg.exon_only;
@@ -437,6 +442,9 @@ fn main() {
     if exon_only && anno_path.is_none() {
         panic!("exon_only is set, but annotation file is not provided");
     }
+    if direct_haplotag && input_vcf.is_none() {
+        panic!("direct_haplotag is set, but input_vcf is not provided");
+    }
 
     let (regions, exon_regions) = build_regions(
         bam_path,
@@ -484,6 +492,7 @@ fn main() {
         min_phase_score.unwrap(),
         max_enum_snps.unwrap(),
         min_read_assignment_diff.unwrap(),
+        direct_haplotag,
         no_bam_output,
         low_allele_frac_cutoff.unwrap(),
         low_allele_cnt_cutoff.unwrap(),
