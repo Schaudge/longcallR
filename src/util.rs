@@ -415,7 +415,7 @@ pub fn parse_annotation(
                     gene_id: Option::from(gene_id.clone()),
                 });
             }
-        } else if feature == "CDS" {
+        } else if feature == "exon" {
             let mut exon_gene_id = String::new();
             for subpart in parts[8].trim_end().split(';') {
                 let trimmed = subpart.trim();
