@@ -347,11 +347,16 @@ pub fn run(
                 read_phasesets.insert(rd.0.clone(), rd.1);
             }
         }
+        let mut sorted_regions = isolated_regions.clone();
+        sorted_regions.sort_by(|a, b| {
+            chr_order.get(&a.chr).cmp(&chr_order.get(&b.chr))
+                .then(a.start.cmp(&b.start))
+        });
         let mut bam_reader = bam::IndexedReader::from_path(&bam_file).unwrap();
         let header = bam::Header::from_template(&bam_reader.header());
         let mut bam_writer = bam::Writer::from_path(phased_bam_file, &header, Format::Bam).unwrap();
         bam_writer.set_threads(thread_size).unwrap();
-        for region in isolated_regions.iter() {
+        for region in sorted_regions.iter() {
             // TODO: duplicate reads in different regions
             bam_reader
                 .fetch((region.chr.as_str(), region.start, region.end))
