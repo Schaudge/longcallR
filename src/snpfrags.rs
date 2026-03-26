@@ -778,21 +778,11 @@ impl SNPFrag {
             let som_cand = &mut self.candidate_snps[self.low_frac_snps[i]];
             let (hap1_allele_class, hap2_allele_class) = calculate_prob_low_frac(&som_cand.hap_quals.hap1_ref_baseqs, &som_cand.hap_quals.hap1_alt_baseqs, &som_cand.hap_quals.hap2_ref_baseqs, &som_cand.hap_quals.hap2_alt_baseqs, 0.3);
             if hap1_allele_class.allcls == 0 && hap2_allele_class.allcls == 2 {
-                let low_frac_score = -10.0_f64 * (1.0 - hap2_allele_class.prob).log10();
                 som_cand.low_frac = true;
                 som_cand.variant_type = 1;
-                som_cand.low_frac_score = low_frac_score;
-                // println!("low_frac snp:{}, score: {}", som_cand.pos, low_frac_score);
-                // println!("{:?},{:?}", hap1_allele_class, hap2_allele_class);
-                // println!("hap1_ref_baseqs:{:?}\nhap1_alt_baseqs:{:?}\nhap2_ref_baseqs:{:?}\nhap2_alt_baseqs:{:?}", som_cand.hap_quals.hap1_ref_baseqs, som_cand.hap_quals.hap1_alt_baseqs, som_cand.hap_quals.hap2_ref_baseqs, som_cand.hap_quals.hap2_alt_baseqs);
             } else if hap1_allele_class.allcls == 2 && hap2_allele_class.allcls == 0 {
-                let low_frac_score = -10.0_f64 * (1.0 - hap1_allele_class.prob).log10();
                 som_cand.low_frac = true;
                 som_cand.variant_type = 1;
-                som_cand.low_frac_score = low_frac_score;
-                // println!("low_frac snp:{}, score: {}", som_cand.pos, low_frac_score);
-                // println!("{:?},{:?}", hap1_allele_class, hap2_allele_class);
-                // println!("hap1_ref_baseqs:{:?}\nhap1_alt_baseqs:{:?}\nhap2_ref_baseqs:{:?}\nhap2_alt_baseqs:{:?}", som_cand.hap_quals.hap1_ref_baseqs, som_cand.hap_quals.hap1_alt_baseqs, som_cand.hap_quals.hap2_ref_baseqs, som_cand.hap_quals.hap2_alt_baseqs);
             }
         }
     }

@@ -282,10 +282,7 @@ pub fn run(
             .unwrap();
         vf.write("##FORMAT=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n".as_bytes())
             .unwrap();
-        vf.write("##FORMAT=<ID=PQ,Number=1,Type=Float,Description=\"Phasing Quality\">\n".as_bytes())
-            .unwrap();
-        vf.write("##FORMAT=<ID=AE,Number=A,Type=Integer,Description=\"Haplotype expression of two alleles\">\n".as_bytes()).unwrap();
-        vf.write("##FORMAT=<ID=SQ,Number=1,Type=Float,Description=\"Low Fraction Variant Score\">\n".as_bytes())
+        vf.write("##FORMAT=<ID=PQ,Number=1,Type=Integer,Description=\"Phasing Quality\">\n".as_bytes())
             .unwrap();
         vf.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n".as_bytes())
             .unwrap();

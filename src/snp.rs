@@ -81,8 +81,6 @@ pub struct CandidateSNP {
     // candidate low fraction variant
     pub low_frac: bool,
     // detected low fraction variant by model
-    pub low_frac_score: f64,
-    // phred low fraction score
     pub hap_quals: HapQuals,
     // base qualities for identifying low fraction variant
     pub phase_set: u32,
