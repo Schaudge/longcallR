@@ -49,8 +49,7 @@ impl SNPFrag {
                     af[1] = snp.allele_freqs[1];
                 }
                 rd.qual = snp.variant_quality as i32;
-                rd.filter = "dn".to_string().into_bytes();
-                rd.info = format!("RDS={}", "dense_snp").to_string().into_bytes();
+                rd.filter = "Dense".to_string().into_bytes();
                 let mut gt = "0/0";
                 if snp.variant_type == 1 {
                     gt = "0/1"
@@ -99,7 +98,6 @@ impl SNPFrag {
                     }
                     rd.filter = "RnaEdit".to_string().into_bytes();
                     rd.qual = snp.variant_quality as i32;
-                    rd.info = "RDS=noselect".to_string().into_bytes();
                     if snp.variant_type == 1 {
                         gt = "0/1"
                     } else if snp.variant_type == 2 {
@@ -160,7 +158,6 @@ impl SNPFrag {
                     }
                 }
                 rd.qual = snp.variant_quality as i32;
-                rd.info = "RDS=noselect".to_string().into_bytes();
                 if gt == "0/0" || gt == "0/1" || gt == "1/1" {
                     rd.genotype = format!(
                         "{}:{}:{}:{:.2}",
@@ -263,7 +260,6 @@ impl SNPFrag {
                     }
                 }
                 rd.qual = snp.variant_quality as i32;
-                rd.info = "RDS=select".to_string().into_bytes();
                 if gt == "0/0" || gt == "0/1" || gt == "1/1" || gt == "0|1" || gt == "1|0" {
                     if snp.phase_set != 0 {
                         rd.genotype = format!(

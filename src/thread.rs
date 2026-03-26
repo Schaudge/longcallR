@@ -305,7 +305,7 @@ pub fn run(
                         std::str::from_utf8(&rd.alternative[0]).unwrap(),
                         rd.qual,
                         std::str::from_utf8(&rd.filter).unwrap(),
-                        std::str::from_utf8(&rd.info).unwrap(),
+                        ".",
                         std::str::from_utf8(&rd.format).unwrap(),
                         rd.genotype
                     )
@@ -324,7 +324,7 @@ pub fn run(
                         std::str::from_utf8(&rd.alternative[1]).unwrap(),
                         rd.qual,
                         std::str::from_utf8(&rd.filter).unwrap(),
-                        std::str::from_utf8(&rd.info).unwrap(),
+                        ".",
                         std::str::from_utf8(&rd.format).unwrap(),
                         rd.genotype
                     )
