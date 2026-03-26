@@ -441,7 +441,7 @@ pub fn get_blocks(block_links: &HashMap<[usize; 2], i32>, weight_threshold: u32)
 }
 
 impl SNPFrag {
-    pub unsafe fn init_haplotypes(&mut self) {
+    pub fn init_haplotypes(&mut self) {
         let mut rng = rand::thread_rng();
         for snp in &mut self.candidate_snps {
             snp.haplotype = if rng.gen::<f64>() < 0.5 { 1 } else { -1 };
@@ -671,7 +671,7 @@ impl SNPFrag {
         return conserved_snps;
     }
 
-    pub unsafe fn init_assignment(&mut self) {
+    pub fn init_assignment(&mut self) {
         let mut rng = rand::thread_rng();
         self.fragments.iter_mut()
             .filter(|fragment| fragment.for_phasing)
@@ -1110,10 +1110,8 @@ impl SNPFrag {
                 self.candidate_snps.iter_mut()
                     .zip(hap)
                     .for_each(|(snp, &h)| snp.haplotype = h);
-                unsafe {
-                    self.init_assignment();
-                    self.init_genotype();
-                }
+                self.init_assignment();
+                self.init_genotype();
                 let prob = self.cross_optimize(&conserved_snps, false, true, apply_downsampling);
                 if prob > largest_prob {
                     largest_prob = prob;
