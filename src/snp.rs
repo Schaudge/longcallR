@@ -16,7 +16,7 @@ pub struct HapQuals {
 #[derive(Debug, Clone, Default)]
 pub struct AlleleClass {
     pub allcls: u8,
-    // 0: ref, 1: hete, 2: somatic
+    // 0: ref, 1: hete, 2: low_frac
     pub prob: f64,
     // probability of allele class
 }
@@ -76,15 +76,15 @@ pub struct CandidateSNP {
     pub single: bool,
     // current snp has surrounding haplotype links or not, only works for heterozygous snps
     pub non_selected: bool,
-    // current site is not selected by phasing, it maybe HomRef, Somatic, Rna_edit or HomVar.
-    pub cand_somatic: bool,
-    // candidate site for somatic mutation detection
-    pub somatic: bool,
-    // detected somatic mutation by model
-    pub somatic_score: f64,
-    // phred somatic score
+    // current site is not selected by phasing, it maybe HomRef, LowFrac, RnaEdit or HomVar.
+    pub cand_low_frac: bool,
+    // candidate low fraction variant
+    pub low_frac: bool,
+    // detected low fraction variant by model
+    pub low_frac_score: f64,
+    // phred low fraction score
     pub hap_quals: HapQuals,
-    // base qualities for identifying somatic mutation
+    // base qualities for identifying low fraction variant
     pub phase_set: u32,
     // phase set id is the position of the first snp in the phase set
 }

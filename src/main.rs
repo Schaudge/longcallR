@@ -11,7 +11,7 @@ mod fragment;
 mod phase;
 mod snp;
 mod snpfrags;
-mod somatic;
+mod low_frac;
 mod thread;
 mod util;
 mod vcf;

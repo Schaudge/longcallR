@@ -210,9 +210,9 @@ pub fn run(
             snpfrag.assign_snp_haplotype_genotype(false);   // run3
 
             // snpfrag.eval_hom_var_phase(min_phase_score);
-            // assign phased fragments to somatic mutations and detect condifent somatic mutations
-            // println!("somatic: {}", snpfrag.somatic_snps.len());
-            // snpfrag.detect_somatic_by_het(&bam_file.as_str(), &reg);
+            // assign phased fragments to low fraction variants and detect confident low fraction variants
+            // println!("low_frac: {}", snpfrag.low_frac_snps.len());
+            // snpfrag.detect_low_frac_by_het(&bam_file.as_str(), &reg);
             // snpfrag.phase_ase_hete_snps(max_enum_snps, random_flip_fraction, max_iters);
             // assign reads to haplotypes, filter reads having conflicted ase snps and heterozygous snps
             // let read_assignments_ase = snpfrag.assign_reads_ase(read_assignment_cutoff);
@@ -286,7 +286,7 @@ pub fn run(
         vf.write("##FORMAT=<ID=PQ,Number=1,Type=Float,Description=\"Phasing Quality\">\n".as_bytes())
             .unwrap();
         vf.write("##FORMAT=<ID=AE,Number=A,Type=Integer,Description=\"Haplotype expression of two alleles\">\n".as_bytes()).unwrap();
-        vf.write("##FORMAT=<ID=SQ,Number=1,Type=Float,Description=\"Somatic Score\">\n".as_bytes())
+        vf.write("##FORMAT=<ID=SQ,Number=1,Type=Float,Description=\"Low Fraction Variant Score\">\n".as_bytes())
             .unwrap();
         vf.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n".as_bytes())
             .unwrap();
