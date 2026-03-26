@@ -268,9 +268,8 @@ pub fn run(
             .unwrap();
         vf.write("##FILTER=<ID=Multiallelic,Description=\"Multiallelic SNP\">\n".as_bytes())
             .unwrap();
-        vf.write("##FILTER=<ID=dn,Description=\"Dense cluster of variants\">\n".as_bytes())
+        vf.write("##FILTER=<ID=Dense,Description=\"Dense cluster of variants\">\n".as_bytes())
             .unwrap();
-        vf.write("##INFO=<ID=RDS,Number=1,Type=String,Description=\"RNA editing or Dense SNP or Single SNP.\">\n".as_bytes()).unwrap();
         vf.write("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n".as_bytes())
             .unwrap();
         vf.write("##FORMAT=<ID=PS,Number=1,Type=Integer,Description=\"Phase Set\">\n".as_bytes())
