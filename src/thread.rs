@@ -57,7 +57,8 @@ pub fn run(
     let vcf_records_queue = Mutex::new(VecDeque::new());
     let read_haplotag_queue = Mutex::new(VecDeque::new());
     let read_phaseset_queue = Mutex::new(VecDeque::new());
-    let ref_seqs = load_reference(ref_file);
+    let ref_seqs = load_reference(ref_file)
+        .unwrap_or_else(|e| panic!("{}", e));
     let fai_path = String::from(ref_file) + ".fai";
     if fs::metadata(&fai_path).is_err() {
         panic!("Reference index file .fai does not exist.");
@@ -76,7 +77,12 @@ pub fn run(
     pool.install(|| {
         isolated_regions.par_iter().for_each(|reg| {
             let mut profile = Profile::default();
-            let ref_seq = ref_seqs.get(&reg.chr).unwrap();
+            let ref_seq = ref_seqs.get(&reg.chr).unwrap_or_else(|| {
+                panic!(
+                    "Chromosome '{}' from target region is missing in reference FASTA",
+                    reg.chr
+                )
+            });
             let mut exon_region_vec = Vec::new();
             if exon_only {
                 let gene_id_field = reg.gene_id.clone().unwrap();

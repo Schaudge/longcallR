@@ -212,14 +212,26 @@ impl BaseFreq {
     }
 }
 
-pub fn load_reference(ref_path: &str) -> HashMap<String, Vec<u8>> {
+pub fn load_reference(ref_path: &str) -> Result<HashMap<String, Vec<u8>>, String> {
     let mut ref_seqs: HashMap<String, Vec<u8>> = HashMap::new();
-    let reader = fasta::Reader::from_file(ref_path).unwrap();
+    let reader = fasta::Reader::from_file(ref_path)
+        .map_err(|e| format!("Failed to open reference FASTA {}: {}", ref_path, e))?;
     for r in reader.records() {
-        let ref_record = r.unwrap();
-        ref_seqs.insert(ref_record.id().to_string(), ref_record.seq().to_vec());
+        let ref_record = r.map_err(|e| format!("Failed to parse FASTA record in {}: {}", ref_path, e))?;
+        let contig_id = ref_record.id().to_string();
+        let seq = ref_record
+            .seq()
+            .iter()
+            .map(|b| b.to_ascii_uppercase())
+            .collect::<Vec<u8>>();
+        if ref_seqs.insert(contig_id.clone(), seq).is_some() {
+            return Err(format!(
+                "Duplicate contig ID '{}' found in reference FASTA {}",
+                contig_id, ref_path
+            ));
+        }
     }
-    ref_seqs
+    Ok(ref_seqs)
 }
 
 pub fn parse_fai(fai_path: &str) -> Vec<(String, u32)> {
