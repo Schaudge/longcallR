@@ -534,12 +534,19 @@ impl SNPFrag {
         chr_candidates_genotype_quality: &HashMap<usize, GenotypeAndQuality>,
         min_variant_qual: f32,
         use_input_phasing: bool,
+        exon_region_vec: Vec<Interval<u32, u8>>,
+        exon_only: bool,
     ) {
         let pileup = &profile.freq_vec;
+        let exon_intervaltree = Lapper::new(exon_region_vec);
         let mut position = profile.region.start - 1; // 0-based
         for bfidx in 0..pileup.len() {
             let bf = &pileup[bfidx];
             if bf.i {
+                continue;
+            }
+            if exon_only && exon_intervaltree.find(position + 1, position + 2).next().is_none() {
+                position += 1;
                 continue;
             }
             let (allele1, allele1_cnt, allele2, allele2_cnt) =

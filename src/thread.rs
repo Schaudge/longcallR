@@ -119,6 +119,8 @@ pub fn run(
                         chr_candidates_genotype_quality,
                         0.0,
                         direct_haplotag_from_vcf,
+                        exon_region_vec.clone(),
+                        exon_only,
                     );
                 }
             } else {
