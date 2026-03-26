@@ -1095,21 +1095,28 @@ impl SNPFrag {
         let ld_graph = self.divide_snps_into_blocks(ld_weight_threshold);
         // println!("{}", format!("{}", Dot::new(&ld_graph)));
 
-        if self.candidate_snps.len() <= max_enum_snps {
-            // enumerate the haplotype, then optimize the assignment
-            let mut haplotype_enum = vec![vec![1; self.candidate_snps.len()]];
-            for ti in 0..self.candidate_snps.len() {
+        let phasing_idxes: Vec<usize> = self.candidate_snps.iter()
+            .enumerate()
+            .filter(|(_, snp)| snp.for_phasing)
+            .map(|(i, _)| i)
+            .collect();
+        let phasing_count = phasing_idxes.len();
+
+        if phasing_count <= max_enum_snps {
+            // enumerate the haplotype over for_phasing=true SNPs only
+            let mut haplotype_enum = vec![vec![1i32; phasing_count]];
+            for ti in 0..phasing_count {
                 for tj in 0..haplotype_enum.len() {
                     let mut tmp_hap = haplotype_enum[tj].clone();
                     tmp_hap[ti] = tmp_hap[ti] * (-1);
                     haplotype_enum.push(tmp_hap);
                 }
             }
-            assert!(haplotype_enum.len() == 2_usize.pow(self.candidate_snps.len() as u32), "Error: Not all combinations included");
+            assert!(haplotype_enum.len() == 2_usize.pow(phasing_count as u32), "Error: Not all combinations included");
             for hap in haplotype_enum.iter() {
-                self.candidate_snps.iter_mut()
-                    .zip(hap)
-                    .for_each(|(snp, &h)| snp.haplotype = h);
+                for (idx, &h) in phasing_idxes.iter().zip(hap.iter()) {
+                    self.candidate_snps[*idx].haplotype = h;
+                }
                 self.init_assignment();
                 self.init_genotype();
                 let prob = self.cross_optimize(&conserved_snps, false, true, apply_downsampling);
