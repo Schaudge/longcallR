@@ -184,6 +184,15 @@ impl SNPFrag {
                     position += 1;
                     continue;
                 }
+                // triallelic: also check allele2 when it is also non-ref
+                if allele2 != bf.ref_base {
+                    let allele2_bq_pass_cnt =
+                        allele2_quals.iter().filter(|&&bq| bq >= min_baseq).count();
+                    if allele2_cnt > 0 && allele2_bq_pass_cnt < 2 {
+                        position += 1;
+                        continue;
+                    }
+                }
             } else if allele2 != bf.ref_base {
                 let allele2_bq_pass_cnt =
                     allele2_quals.iter().filter(|&&bq| bq >= min_baseq).count();
