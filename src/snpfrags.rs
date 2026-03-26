@@ -517,7 +517,8 @@ impl SNPFrag {
                 phase_score = -10.0_f64 * (1.0 - cal_phase_score_log(snp.haplotype, snp.genotype, &sigma, &ps, &probs)).log10(); // calaulate assignment score
                 snp.phase_score = phase_score;
             } else {
-                snp.phase_score = 0.19940219;
+                // insufficient reads from both haplotypes to phase this SNP
+                snp.phase_score = 0.0;
             }
 
 
