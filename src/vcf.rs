@@ -263,42 +263,42 @@ impl SNPFrag {
                 if gt == "0/0" || gt == "0/1" || gt == "1/1" || gt == "0|1" || gt == "1|0" {
                     if snp.phase_set != 0 {
                         rd.genotype = format!(
-                            "{}:{}:{}:{}:{:.2}:{:.2}",
+                            "{}:{}:{}:{}:{:.2}:{}",
                             gt,
                             snp.genotype_quality as i32,
                             snp.phase_set,
                             snp.depth,
                             af[0],
-                            snp.phase_score
+                            snp.phase_score as i32
                         );
                     } else {
                         rd.genotype = format!(
-                            "{}:{}:{}:{}:{:.2}:{:.2}",
-                            gt, snp.genotype_quality as i32, ".", snp.depth, af[0], snp.phase_score
+                            "{}:{}:{}:{}:{:.2}:{}",
+                            gt, snp.genotype_quality as i32, ".", snp.depth, af[0], snp.phase_score as i32
                         );
                     }
                 } else {
                     if snp.phase_set != 0 {
                         rd.genotype = format!(
-                            "{}:{}:{}:{}:{:.2},{:.2}:{:.2}",
+                            "{}:{}:{}:{}:{:.2},{:.2}:{}",
                             gt,
                             snp.genotype_quality as i32,
                             snp.phase_set,
                             snp.depth,
                             af[0],
                             af[1],
-                            snp.phase_score
+                            snp.phase_score as i32
                         );
                     } else {
                         rd.genotype = format!(
-                            "{}:{}:{}:{}:{:.2},{:.2}:{:.2}",
+                            "{}:{}:{}:{}:{:.2},{:.2}:{}",
                             gt,
                             snp.genotype_quality as i32,
                             ".",
                             snp.depth,
                             af[0],
                             af[1],
-                            snp.phase_score
+                            snp.phase_score as i32
                         );
                     }
                 }
