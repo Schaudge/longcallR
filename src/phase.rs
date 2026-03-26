@@ -366,6 +366,7 @@ pub fn check_block_new_haplotype_haplotag(snpfrag: &SNPFrag, updated_haplotype: 
         let mut probs: Vec<f64> = Vec::new();
         for k in snpfrag.candidate_snps[*i].snp_cover_fragments.iter() {
             if snpfrag.fragments[*k].haplotag == 0 
+                || !snpfrag.fragments[*k].for_phasing
                 || (apply_downsampling && !snpfrag.fragments[*k].downsampled){
                 continue;
             }
