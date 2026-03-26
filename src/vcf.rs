@@ -155,6 +155,8 @@ impl SNPFrag {
                         af[1] = snp.allele_freqs[1];
                         gt = "1/2";
                         rd.filter = "Multiallelic".to_string().into_bytes();
+                    } else {
+                        continue;
                     }
                 }
                 rd.qual = snp.variant_quality as i32;
@@ -191,10 +193,14 @@ impl SNPFrag {
                         }
                         if snp.haplotype == 1 {
                             gt = "0|1"
-                        } else {
+                        } else if snp.haplotype == -1 {
                             gt = "1|0"
+                        } else {
+                            continue;
                         }
                         rd.filter = "PASS".to_string().into_bytes();
+                    } else {
+                        continue;
                     }
                 } else {
                     if snp.variant_type == 0 {
@@ -251,6 +257,8 @@ impl SNPFrag {
                             af[1] = snp.allele_freqs[1];
                             gt = "1/2";
                             rd.filter = "Multiallelic".to_string().into_bytes();
+                        } else {
+                            continue;
                         }
                     }
                 }
