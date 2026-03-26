@@ -121,6 +121,8 @@ pub fn run(
                         direct_haplotag_from_vcf,
                         exon_region_vec.clone(),
                         exon_only,
+                        min_depth,
+                        min_allele_freq,
                     );
                 }
             } else {

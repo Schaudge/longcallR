@@ -545,6 +545,8 @@ impl SNPFrag {
         use_input_phasing: bool,
         exon_region_vec: Vec<Interval<u32, u8>>,
         exon_only: bool,
+        min_depth: u32,
+        min_allele_freq: f32,
     ) {
         let pileup = &profile.freq_vec;
         let exon_intervaltree = Lapper::new(exon_region_vec);
@@ -569,8 +571,25 @@ impl SNPFrag {
                     continue;
                 }
                 let total_allele_count = bf.get_allele_counts();
-                let allele1_freq = (allele1_cnt as f32) / (total_allele_count as f32);
-                let allele2_freq = (allele2_cnt as f32) / (total_allele_count as f32);
+                let allele1_freq = if total_allele_count > 0 { (allele1_cnt as f32) / (total_allele_count as f32) } else { 0.0 };
+                let allele2_freq = if total_allele_count > 0 { (allele2_cnt as f32) / (total_allele_count as f32) } else { 0.0 };
+                if !use_input_phasing {
+                    if total_allele_count < min_depth {
+                        position += 1;
+                        continue;
+                    }
+                    // skip if no alt allele evidence in RNA: for non-ref genotypes,
+                    // the non-ref allele frequency must meet min_allele_freq
+                    let alt_freq = if allele1 != ref_seq[ref_pos] as char {
+                        allele1_freq
+                    } else {
+                        allele2_freq
+                    };
+                    if genotype_quality.genotype != 0 && alt_freq < min_allele_freq {
+                        position += 1;
+                        continue;
+                    }
+                }
                 let mut candidate_snp = CandidateSNP::default();
                 candidate_snp.chromosome = profile.region.chr.clone();
                 candidate_snp.pos = ref_pos as i64;
