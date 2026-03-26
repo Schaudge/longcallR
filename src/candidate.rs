@@ -609,8 +609,9 @@ impl SNPFrag {
                         candidate_snp.variant_type = 3;
                         candidate_snp.genotype = -1;
                         candidate_snp.hom_var = true;
+                        candidate_snp.for_phasing = true;
                         self.candidate_snps.push(candidate_snp);
-                        self.het_snps.push(self.candidate_snps.len() - 1);
+                        self.homo_snps.push(self.candidate_snps.len() - 1);
                     }
                     _ => {
                         println!(
