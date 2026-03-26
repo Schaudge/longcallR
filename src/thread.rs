@@ -63,11 +63,10 @@ pub fn run(
         panic!("Reference index file .fai does not exist.");
     }
     let contig_lengths = parse_fai(fai_path.as_str());
-    let mut contig_order = Vec::new();
-    for (k, _) in contig_lengths.iter() {
-        contig_order.push(k.clone());
-    }
-
+    let chr_order: HashMap<String, usize> = contig_lengths.iter()
+        .enumerate()
+        .map(|(i, (chr, _))| (chr.clone(), i))
+        .collect();
     let candidates_genotype_quality = if let Some(vcf_file) = input_vcf_file.clone() {
         get_genotype_quality_phase_from_vcf(vcf_file.as_str())
     } else {
@@ -105,7 +104,7 @@ pub fn run(
             let mut snpfrag = SNPFrag::default();
             snpfrag.region = reg.clone();
             snpfrag.min_linkers = min_linkers;
-            if input_vcf_file.clone().is_some() {
+            if input_vcf_file.is_some() {
                 let chr_candidates_genotype_quality = candidates_genotype_quality.get(&reg.chr);    // 0-based
                 if let Some(chr_candidates_genotype_quality) = chr_candidates_genotype_quality {
                     snpfrag.import_external_candidates(
@@ -176,13 +175,6 @@ pub fn run(
                     }
                 }
 
-                let vcf_records = snpfrag.output_phased_vcf(min_phase_score);
-                {
-                    let mut queue = vcf_records_queue.lock().unwrap();
-                    for rd in vcf_records.iter() {
-                        queue.push_back(rd.clone());
-                    }
-                }
                 return;
             }
 
@@ -193,11 +185,11 @@ pub fn run(
             // snpfrag.chain_phase(max_enum_snps);
             snpfrag.phase(1, max_enum_snps, apply_downsampling);
             // let read_assignments = snpfrag.assign_reads_haplotype(read_assignment_cutoff);
-            snpfrag.assign_reads_haplotype(read_assignment_cutoff, apply_downsampling);
-            snpfrag.assign_snp_haplotype_genotype(apply_downsampling);
+            snpfrag.assign_reads_haplotype(read_assignment_cutoff, apply_downsampling); // run1
+            snpfrag.assign_snp_haplotype_genotype(apply_downsampling);  // run1
             // let read_assignments = snpfrag.assign_reads_haplotype(read_assignment_cutoff);
-            snpfrag.assign_reads_haplotype(read_assignment_cutoff, apply_downsampling);
-            snpfrag.assign_snp_haplotype_genotype(apply_downsampling);
+            snpfrag.assign_reads_haplotype(read_assignment_cutoff, apply_downsampling); // run2
+            snpfrag.assign_snp_haplotype_genotype(apply_downsampling);  // run2
             // snpfrag.assign_het_var_haplotype(min_phase_score, low_allele_frac_cutoff, low_allele_cnt_cutoff);
             // snpfrag.eval_low_frac_het_var_phase(min_phase_score, low_allele_frac_cutoff, low_allele_cnt_cutoff);
 
@@ -206,8 +198,8 @@ pub fn run(
             // Without this, the subsequent `assign_reads_haplotype` call would be ineffective, as it depends on an up-to-date set of phase sites.
             snpfrag.eval_rna_edit_var_phase(min_phase_score - 3.0, apply_downsampling);
             snpfrag.eval_low_frac_var_phase(min_phase_score - 3.0, apply_downsampling);
-            let read_assignments = snpfrag.assign_reads_haplotype(read_assignment_cutoff, false);
-            snpfrag.assign_snp_haplotype_genotype(false);
+            let read_assignments = snpfrag.assign_reads_haplotype(read_assignment_cutoff, false);   // run3
+            snpfrag.assign_snp_haplotype_genotype(false);   // run3
 
             // snpfrag.eval_hom_var_phase(min_phase_score);
             // assign phased fragments to somatic mutations and detect condifent somatic mutations
@@ -291,7 +283,9 @@ pub fn run(
         vf.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n".as_bytes())
             .unwrap();
 
-        for rd in vcf_records_queue.lock().unwrap().iter() {
+        let mut vcf_records: Vec<_> = vcf_records_queue.lock().unwrap().iter().cloned().collect();
+        vcf_records.sort_by_key(|rd| (*chr_order.get(&rd.chromosome).unwrap_or(&usize::MAX), rd.position));
+        for rd in vcf_records.iter() {
             if rd.alternative.len() == 1 {
                 vf.write(
                     format!(
