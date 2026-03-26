@@ -14,7 +14,7 @@ pub fn calculate_prob_low_frac(hap1_ref_baseqs: &Vec<u8>, hap1_alt_baseqs: &Vec<
     let mut prob_read_het = 1.0;
     let mut prob_read_low_frac = 1.0;
 
-    // P(read|ref), P(read|het), P(read|som)
+    // P(read|ref), P(read|het), P(read|low_frac)
     for q in hap1_ref_baseqs.iter() {
         let epsilon = 10.0_f64.powf(-(q.to_f64() / 10.0));  // error rate
         prob_read_ref *= 1.0 - epsilon; // ref->ref
@@ -48,7 +48,7 @@ pub fn calculate_prob_low_frac(hap1_ref_baseqs: &Vec<u8>, hap1_alt_baseqs: &Vec<
     let mut prob_read_het = 1.0;
     let mut prob_read_low_frac = 1.0;
 
-    // P(read|ref), P(read|het), P(read|som)
+    // P(read|ref), P(read|het), P(read|low_frac)
     for q in hap2_ref_baseqs.iter() {
         let epsilon = 10.0_f64.powf(-(q.to_f64() / 10.0));  // error rate
         prob_read_ref *= 1.0 - epsilon; // ref->ref

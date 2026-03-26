@@ -523,7 +523,7 @@ impl SNPFrag {
             //     snp.for_phasing = true;
             // }
 
-            // TODO: het var with low phase score transfer to som var
+            // TODO: het var with low phase score transfer to low_frac var
             // if phase_score < min_phase_score as f64 {
             //     // record HapQuals for low_frac mutation detection
             //     for k in 0..assigns.len() {
@@ -775,14 +775,14 @@ impl SNPFrag {
         self.get_low_frac_haplotype_baseqs(bam_path, region, &phased_fragments);
         // 2. find candidates meet the criteria of low_frac mutation. haplotype-specific
         for i in 0..self.low_frac_snps.len() {
-            let som_cand = &mut self.candidate_snps[self.low_frac_snps[i]];
-            let (hap1_allele_class, hap2_allele_class) = calculate_prob_low_frac(&som_cand.hap_quals.hap1_ref_baseqs, &som_cand.hap_quals.hap1_alt_baseqs, &som_cand.hap_quals.hap2_ref_baseqs, &som_cand.hap_quals.hap2_alt_baseqs, 0.3);
+            let low_frac_cand = &mut self.candidate_snps[self.low_frac_snps[i]];
+            let (hap1_allele_class, hap2_allele_class) = calculate_prob_low_frac(&low_frac_cand.hap_quals.hap1_ref_baseqs, &low_frac_cand.hap_quals.hap1_alt_baseqs, &low_frac_cand.hap_quals.hap2_ref_baseqs, &low_frac_cand.hap_quals.hap2_alt_baseqs, 0.3);
             if hap1_allele_class.allcls == 0 && hap2_allele_class.allcls == 2 {
-                som_cand.low_frac = true;
-                som_cand.variant_type = 1;
+                low_frac_cand.low_frac = true;
+                low_frac_cand.variant_type = 1;
             } else if hap1_allele_class.allcls == 2 && hap2_allele_class.allcls == 0 {
-                som_cand.low_frac = true;
-                som_cand.variant_type = 1;
+                low_frac_cand.low_frac = true;
+                low_frac_cand.variant_type = 1;
             }
         }
     }
