@@ -400,6 +400,11 @@ fn main() {
         }
     }
 
+    // check if set exon_only, anno_path should be set
+    if exon_only && anno_path.is_none() {
+        panic!("--exon-only is set, but annotation file is not provided");
+    }
+
     if get_blocks {
         let (regions, _) = build_regions(
             bam_path,
@@ -438,10 +443,6 @@ fn main() {
         return;
     }
 
-    // check if set exon_only, anno_path should be set
-    if exon_only && anno_path.is_none() {
-        panic!("exon_only is set, but annotation file is not provided");
-    }
     if direct_haplotag && input_vcf.is_none() {
         panic!("direct_haplotag is set, but input_vcf is not provided");
     }
