@@ -408,7 +408,13 @@ pub fn get_genotype_quality_phase_from_vcf(
         let rid = record.rid().unwrap();
         let chr = std::str::from_utf8(record.header().rid2name(rid).unwrap()).unwrap();
         let pos = record.pos(); // 0-based position
-        let qual = record.qual();
+        // Use VCF QUAL (variant-level quality) as a proxy for both variant_quality and
+        // genotype_quality. GQ (FORMAT field) is optional and not guaranteed to be present
+        // in all VCFs, so QUAL is used for portability.
+        // When QUAL is '.' (NaN), the variant is still considered valid (e.g. FILTER=PASS).
+        // Use a large pseudo value so it passes all downstream quality filters.
+        let raw_qual: f32 = record.qual();
+        let qual: f32 = if raw_qual.is_nan() { f32::MAX } else { raw_qual };
         let sample_count = usize::try_from(record.sample_count()).unwrap();
         let gts = record.genotypes().expect("Error reading genotypes");
         for sample_index in 0..sample_count {
@@ -418,15 +424,13 @@ pub fn get_genotype_quality_phase_from_vcf(
                 // Skip records that don't have two alleles.
                 continue;
             }
+            // In BCF encoding, gt[0] is always Unphased; phasing is indicated by gt[1] being Phased.
             let gt0 = match gt[0] {
                 GenotypeAllele::Unphased(n) => n,
-                GenotypeAllele::Phased(n) => {
-                    phased = true;
-                    n
-                }
                 GenotypeAllele::UnphasedMissing | GenotypeAllele::PhasedMissing => 3,
+                GenotypeAllele::Phased(_) => unreachable!("gt[0] should never be Phased in BCF encoding"),
             };
-            // For gt[1], update `phased` if the allele is phased.
+            // For gt[1], phased variant (e.g. 0|1) is encoded as Phased(n).
             let gt1 = match gt[1] {
                 GenotypeAllele::Unphased(n) => n,
                 GenotypeAllele::Phased(n) => {
@@ -467,11 +471,6 @@ pub fn get_genotype_quality_phase_from_vcf(
                     haplotype,
                 },
             );
-
-            // println!(
-            //     "{}:{} Qual {} Sample {} phase: {} genotype: {:?}, gt: {:?}",
-            //     chr, pos, qual, sample_index, phased, genotype, gt
-            // );
         }
     }
     genotype_quality
