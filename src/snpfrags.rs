@@ -237,8 +237,6 @@ impl SNPFrag {
             let mut sigma: Vec<i32> = Vec::new();
             let mut ps: Vec<i32> = Vec::new();
             let mut probs: Vec<f64> = Vec::new();
-            let mut assigns: Vec<i32> = Vec::new();
-            let mut baseqs = Vec::new();
             let mut hap1_reads_num = 0;
             let mut hap2_reads_num = 0;
             for k in snp.snp_cover_fragments.iter() {
@@ -262,8 +260,6 @@ impl SNPFrag {
                         ps.push(fe.p);
                         probs.push(fe.prob);
                         sigma.push(self.fragments[*k].haplotag);
-                        assigns.push(self.fragments[*k].assignment);
-                        baseqs.push(fe.baseq);
                     }
                 }
             }
@@ -329,8 +325,6 @@ impl SNPFrag {
             let mut sigma: Vec<i32> = Vec::new();
             let mut ps: Vec<i32> = Vec::new();
             let mut probs: Vec<f64> = Vec::new();
-            let mut assigns: Vec<i32> = Vec::new();
-            let mut baseqs = Vec::new();
             let mut hap1_reads_num = 0;
             let mut hap2_reads_num = 0;
             for k in snp.snp_cover_fragments.iter() {
@@ -354,8 +348,6 @@ impl SNPFrag {
                         ps.push(fe.p);
                         probs.push(fe.prob);
                         sigma.push(self.fragments[*k].haplotag);
-                        assigns.push(self.fragments[*k].assignment);
-                        baseqs.push(fe.baseq);
                     }
                 }
             }
