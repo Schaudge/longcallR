@@ -1,6 +1,7 @@
 use bio::bio_types::strand::ReqStrand::Forward;
 use bio::io::fasta;
 use std::collections::{HashMap, VecDeque};
+use flate2::read::MultiGzDecoder;
 use std::io::{BufRead, BufReader};
 use std::sync::Mutex;
 use std::{fs, fs::File};
@@ -339,8 +340,12 @@ pub fn parse_annotation(
 ) {
     let mut gene_regions: HashMap<String, VecDeque<Region>> = HashMap::new(); // key is chr, value is a stack of gene regions
     let mut exon_regions: HashMap<String, Vec<Interval<u32, u8>>> = HashMap::new(); // key is gene id, value is exon regions
-    let file = File::open(anno_path).unwrap();
-    let reader = BufReader::new(file);
+    let file = File::open(&anno_path).unwrap();
+    let reader: Box<dyn BufRead> = if anno_path.ends_with(".gz") {
+        Box::new(BufReader::new(MultiGzDecoder::new(file)))
+    } else {
+        Box::new(BufReader::new(file))
+    };
     let mut invs: Vec<Interval<u32, u8>> = Vec::new(); // for merging gene exons
     let mut gene_id: String = String::new();
     for line in reader.lines() {
