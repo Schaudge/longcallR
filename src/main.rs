@@ -5,13 +5,15 @@ use crate::util::*;
 use clap::{ArgAction, Parser};
 use rust_lapper::Interval;
 
+mod ase;
+mod asj;
 mod candidate;
 mod exon;
 mod fragment;
+mod low_frac;
 mod phase;
 mod snp;
 mod snpfrags;
-mod low_frac;
 mod thread;
 mod util;
 mod vcf;
@@ -230,6 +232,24 @@ fn build_regions(
 }
 
 fn main() {
+    let raw_args: Vec<String> = std::env::args().collect();
+    if raw_args.get(1).map(|x| x == "ase").unwrap_or(false) {
+        let mut ase_argv: Vec<String> = Vec::new();
+        ase_argv.push(format!("{} ase", raw_args[0]));
+        ase_argv.extend(raw_args.iter().skip(2).cloned());
+        let ase_args = ase::AseArgs::parse_from(ase_argv);
+        ase::run_ase(ase_args);
+        return;
+    }
+    if raw_args.get(1).map(|x| x == "asj").unwrap_or(false) {
+        let mut asj_argv: Vec<String> = Vec::new();
+        asj_argv.push(format!("{} asj", raw_args[0]));
+        asj_argv.extend(raw_args.iter().skip(2).cloned());
+        let asj_args = asj::AsjArgs::parse_from(asj_argv);
+        asj::run_asj(asj_args);
+        return;
+    }
+
     let arg = Args::parse();
     let bam_path = arg.bam_path.as_str();
     let out_bam = (arg.output.clone() + ".phased.bam").clone();
@@ -247,7 +267,6 @@ fn main() {
     let downsample = arg.downsample;
     let truncation = arg.truncation;
     let exon_only = arg.exon_only;
-
 
     let platform: Platform;
     let min_depth: Option<u32>;
@@ -300,8 +319,7 @@ fn main() {
             truncation_coverage = Option::from(arg.truncation_coverage.unwrap_or(200000));
             downsample_depth = Option::from(arg.downsample_depth.unwrap_or(10000));
             min_read_length = Option::from(arg.min_read_length.unwrap_or(500));
-            low_allele_frac_cutoff =
-                Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
+            low_allele_frac_cutoff = Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
             low_allele_cnt_cutoff = Option::from(arg.low_allele_cnt_cutoff.unwrap_or(10));
             println!("Preset: ont-cdna");
         }
@@ -331,8 +349,7 @@ fn main() {
             truncation_coverage = Option::from(arg.truncation_coverage.unwrap_or(200000));
             downsample_depth = Option::from(arg.downsample_depth.unwrap_or(10000));
             min_read_length = Option::from(arg.min_read_length.unwrap_or(500));
-            low_allele_frac_cutoff =
-                Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
+            low_allele_frac_cutoff = Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
             low_allele_cnt_cutoff = Option::from(arg.low_allele_cnt_cutoff.unwrap_or(10));
             println!("Preset: ont-drna");
         }
@@ -362,8 +379,7 @@ fn main() {
             truncation_coverage = Option::from(arg.truncation_coverage.unwrap_or(200000));
             downsample_depth = Option::from(arg.downsample_depth.unwrap_or(10000));
             min_read_length = Option::from(arg.min_read_length.unwrap_or(500));
-            low_allele_frac_cutoff =
-                Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
+            low_allele_frac_cutoff = Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
             low_allele_cnt_cutoff = Option::from(arg.low_allele_cnt_cutoff.unwrap_or(10));
             println!("Preset: hifi-isoseq");
         }
@@ -393,8 +409,7 @@ fn main() {
             truncation_coverage = Option::from(arg.truncation_coverage.unwrap_or(200000));
             downsample_depth = Option::from(arg.downsample_depth.unwrap_or(10000));
             min_read_length = Option::from(arg.min_read_length.unwrap_or(500));
-            low_allele_frac_cutoff =
-                Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
+            low_allele_frac_cutoff = Option::from(arg.low_allele_frac_cutoff.unwrap_or(0.05));
             low_allele_cnt_cutoff = Option::from(arg.low_allele_cnt_cutoff.unwrap_or(10));
             println!("Preset: hifi-masseq");
         }
