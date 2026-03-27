@@ -27,17 +27,20 @@ git clone https://github.com/huangnengCSU/longcallR.git
 cd longcallR
 cargo build --release # The executable will be located at: target/release/longcallR
 
-# call SNPs
+# call SNPs and phasing
 longcallR -b input.bam -f ref.fa -o output -t 8 -p ont-cdna       # Nanopore cDNA reads
 longcallR -b input.bam -f ref.fa -o output -t 8 -p ont-drna       # Nanopore dRNA reads (no strand bias filtering)
 longcallR -b input.bam -f ref.fa -o output -t 8 -p hifi-isoseq    # PacBio iso-seq reads
 longcallR -b input.bam -f ref.fa -o output -t 8 -p hifi-masseq    # PacBio mas-seq reads (no strand bias filtering)
 
+# Note: If read strandedness is uncertain, set --strand-bias false to avoid over-filtering.
+longcallR -b input.bam -f ref.fa -o output -t 8 -p <preset> --strand-bias false
+
 # Allele-specific junction analysis
-python allele_specific/longcallR-asj.py -a annotation.gtf -b phased.bam -f ref.fa -o output_prefix -t threads
+longcallR asj -a annotation.gtf.gz -b phased.bam -f ref.fa -o output_prefix -t threads
 
 # Allele-specific expression analysis
-python allele_specific/longcallR-ase.py -a annotation.gtf -b phased.bam -o output_prefix -t threads
+longcallR ase -a annotation.gtf.gz -b phased.bam -o output_prefix -t threads
 ```
 
 ## Table of Contents
@@ -47,10 +50,11 @@ python allele_specific/longcallR-ase.py -a annotation.gtf -b phased.bam -o outpu
 - [Demo](#demo)
 - [Alignment](#alignment)
 - [Citation](#citation)
+- [Update Log](#update-log)
 - [License](#license)
 
 ## Introduction
-LongcallR is a SNP caller for single molecule long-read RNA-seq data. LongcallR supports Nanopore cDNA sequecing and dRNA sequencing, PacBio Iso-Seq and MAS-Seq.
+longcallR is a tool for SNP calling, haplotype phasing, and allele-specific analysis with long-read RNA-seq data. It supports ONT cDNA and direct RNA sequencing, as well as PacBio Iso-Seq and MAS-Seq.
 
 Full documentation is available at [huangnengCSU.github.io/longcallR](https://huangnengCSU.github.io/longcallR/).
 
@@ -65,11 +69,9 @@ cargo build --release
 
 # Temporarily add to your PATH
 export PATH="$PATH:$(pwd)/target/release"
-export PATH="$PATH:$(pwd)/allele_specific"
 
 # Permanently add to PATH
 echo 'export PATH="$PATH:$(pwd)/target/release"' >> ~/.bashrc
-echo 'export PATH="$PATH:$(pwd)/allele_specific"' >> ~/.bashrc
 source ~/.bashrc
 
 # Check Installation
@@ -106,36 +108,18 @@ longcallR \
 ```
 For advanced options, see the [documentation](https://huangnengCSU.github.io/longcallR/)
 
+Advanced option: if a phased VCF is already available, `--direct-haplotag` can be used with `--input-vcf` to directly haplotag reads without re-phasing SNPs.
+
 ### Allele specific analysis
-1.If installed from source and the executable is already in your PATH, run:
 ```bash
 # call allele-specific expression
-longcallR-ase.py -b <phased_bam>  -a <annotation> -o <output_prefix> -t <threads> --gene_types <gene_types> --min_support <min_support>
+longcallR ase -b <phased_bam> -a <annotation> -o <output_prefix> -t <threads>
 
 # call allele-specific junction
-longcallR-asj.py -b <phased_bam> -a <annotation> -f <reference> -o <output_prefix> -t <threads> -g <gene_types> -m <min_support>
+longcallR asj -b <phased_bam> -a <annotation> -f <reference> -o <output_prefix> -t <threads>
 
 # store allele-specific junction in BED format for IGV visualization
 asj_to_bed.py output.asj.tsv [p_value_threshold] > output.asj.bed
-```
-2.If install from Conda, run:
-```bash
-longcallR-ase -b <phased_bam>  -a <annotation> -o <output_prefix> -t <threads> --gene_types <gene_types> --min_support <min_support>
-longcallR-asj -b <phased_bam> -a <annotation> -f <reference> -o <output_prefix> -t <threads> -g <gene_types> -m <min_support>
-
-wget https://raw.githubusercontent.com/huangnengCSU/longcallR/refs/heads/master/allele_specific/asj_to_bed.py
-python asj_to_bed.py output.asj.tsv [p_value_threshold] > output.asj.bed
-```
-3.If install from Crates.io, run:
-```bash
-wget https://raw.githubusercontent.com/huangnengCSU/longcallR/refs/heads/master/allele_specific/longcallR-ase.py
-python longcallR-ase.py -b <phased_bam>  -a <annotation> -o <output_prefix> -t <threads> --gene_types <gene_types> --min_support <min_support>
-
-wget https://raw.githubusercontent.com/huangnengCSU/longcallR/refs/heads/master/allele_specific/longcallR-asj.py
-python longcallR-asj.py -b <phased_bam> -a <annotation> -f <reference> -o <output_prefix> -t <threads> -g <gene_types> -m <min_support>
-
-wget https://raw.githubusercontent.com/huangnengCSU/longcallR/refs/heads/master/allele_specific/asj_to_bed.py
-python asj_to_bed.py output.asj.tsv [p_value_threshold] > output.asj.bed
 ```
 For detailed information on available options and output file formats, please refer to the [documentation](https://huangnengCSU.github.io/longcallR/)
 
@@ -165,6 +149,12 @@ The results of manuscript can be found and reproduced using the data and scripts
 ## Citation
 If you use LongcallR in your work or analysis, please cite the preprint:
 > Neng Huang, Human Pangenome Reference Consortium, Heng Li, SNP calling, haplotype phasing and allele-specific analysis with long RNA-seq reads. *bioRxiv*, 2025. [doi.org/10.1101/2025.05.26.656191](https://doi.org/10.1101/2025.05.26.656191)
+
+## Update Log
+
+### 2026-03-27
+- Added support for direct haplotagging from a pre-phased VCF using `--input-vcf --direct-haplotag`.
+- Reimplemented the functionality of longcallR-ase.py and longcallR-asj.py in Rust and integrated them into longcallR as the `longcallR ase` and `longcallR asj` subcommands. The Python implementations will be removed in a future release.
 
 
 ## License
