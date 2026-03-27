@@ -16,6 +16,21 @@ from intervaltree import Interval, IntervalTree
 import time
 
 
+def choose_best_gene(read_overlap_length, gene_starts, gene_ends):
+    candidates = [gene_id for gene_id, overlap in read_overlap_length.items() if overlap > 0]
+    if not candidates:
+        return None
+    return min(
+        candidates,
+        key=lambda gene_id: (
+            -read_overlap_length[gene_id],
+            -gene_starts.get(gene_id, 0),
+            gene_ends.get(gene_id, 0) - gene_starts.get(gene_id, 0),
+            gene_id,
+        ),
+    )
+
+
 def get_gene_regions(annotation_file, gene_types):
     """Parse gene, exon, and intron regions from a GFF3 or GTF file.
     :param annotation_file: Path to the annotation file
@@ -238,6 +253,8 @@ def process_chunk(bam_file, chromosome, start, end, ref_seq, no_gtag, min_juncti
             # query should be 1-based, left-inclusive, right-exclusive
             overlapping_intervals = shared_tree.overlap(start_pos + 1, end_pos + 1)
             candidate_gene_ids = [interval.data for interval in overlapping_intervals]
+            gene_starts = {interval.data: interval.begin for interval in overlapping_intervals}
+            gene_ends = {interval.data: interval.end for interval in overlapping_intervals}
 
             # parse cigar string to get the splice alignment regions
             cigar = read.cigartuples
@@ -264,12 +281,13 @@ def process_chunk(bam_file, chromosome, start, end, ref_seq, no_gtag, min_juncti
                 for splice_region in splice_regions:
                     overlap_length += sum(
                         max(0, min(splice_region[1], interval.end - 1) - max(splice_region[0], interval.begin) + 1)
-                        for interval in shared_gene_intervals[gene_id].overlap(*splice_region)
+                        for interval in shared_gene_intervals[gene_id].overlap(splice_region[0], splice_region[1] + 1)
                     )
                 read_overlap_length[gene_id] = overlap_length
             if read_overlap_length:
-                best_gene_id = max(read_overlap_length, key=read_overlap_length.get)
-                read_assignment[read.query_name] = best_gene_id
+                best_gene_id = choose_best_gene(read_overlap_length, gene_starts, gene_ends)
+                if best_gene_id is not None:
+                    read_assignment[read.query_name] = best_gene_id
     return read_assignment, reads_positions, reads_tags, reads_exons, reads_junctions
 
 
@@ -477,8 +495,8 @@ def load_dna_vcf(vcf_file):
     with pysam.VariantFile(vcf_file) as vcf:
         for record in vcf.fetch():
             gt = record.samples[0]['GT']
-            # Skip indels by checking if any alternate allele differs in length from the reference allele
-            if any(len(record.ref) != len(alt) for alt in record.alts):
+            # Skip non-SNPs (indels and MNPs)
+            if len(record.ref) != 1 or any(len(alt) != 1 for alt in record.alts):
                 continue
             # Check for heterozygous variants (0/1 or 1/0 or 0|1 or 1|0)
             if gt in [(0, 1), (1, 0)]:
@@ -505,8 +523,8 @@ def load_longcallR_phased_vcf(vcf_file, with_dp_af = False):
             if 'PASS' not in record.filter.keys():
                 continue
             gt = record.samples[0]['GT']
-            # Skip indels by checking if any alternate allele differs in length from the reference allele
-            if any(len(record.ref) != len(alt) for alt in record.alts):
+            # Skip non-SNPs (indels and MNPs)
+            if len(record.ref) != 1 or any(len(alt) != 1 for alt in record.alts):
                 continue
             # Check for only phased heterozygous variants (0|1 or 1|0)
             if gt in [(0, 1), (1, 0)] and record.samples[0].phased:
@@ -551,6 +569,35 @@ class AseEvent:
         return (f"{self.chr}:{self.start}-{self.end}\t{self.strand}\t{self.junction_set}\t{self.phase_set}\t"
                 f"{self.hap1_absent}\t{self.hap1_present}\t{self.hap2_absent}\t{self.hap2_present}\t"
                 f"{self.p_value}\t{self.sor}\t{self.novel}\t{self.gt_ag_tag}\t{self.gene_name}")
+
+
+def event_total_coverage(event):
+    return event.hap1_absent + event.hap1_present + event.hap2_absent + event.hap2_present
+
+
+def event_stable_key(event):
+    return (event.chr, event.start, event.end, str(event.phase_set), event.gene_name)
+
+
+def is_better_gene_event(candidate, current, eps=1e-12):
+    if candidate.p_value + eps < current.p_value:
+        return True
+    if current.p_value + eps < candidate.p_value:
+        return False
+
+    cand_cov = event_total_coverage(candidate)
+    curr_cov = event_total_coverage(current)
+    if cand_cov > curr_cov:
+        return True
+    if cand_cov < curr_cov:
+        return False
+
+    if candidate.sor > current.sor + eps:
+        return True
+    if current.sor > candidate.sor + eps:
+        return False
+
+    return event_stable_key(candidate) < event_stable_key(current)
 
 
 def calc_sor(hap1_absent, hap1_present, hap2_absent, hap2_present):
@@ -722,8 +769,9 @@ def analyze_gene(gene_name, gene_strand, annotation_exons, annotation_junctions,
     for junc_cluster in junctions_clusters:
         if len(junc_cluster) == 0:
             continue
-        junction_set = f"{chr}:{junc_cluster[0][0]}-{junc_cluster[0][1]}"
-        for read_junc in junc_cluster:
+        junc_cluster_sorted = sorted(junc_cluster, key=lambda x: (x[0], x[1]))
+        junction_set = f"{chr}:{junc_cluster_sorted[0][0]}-{junc_cluster_sorted[0][1]}"
+        for read_junc in junc_cluster_sorted:
             junction_start = read_junc[0]
             junction_end = read_junc[1]
             gt_ag_tag = read_junc[2]
@@ -811,8 +859,9 @@ def analyze_gene_with_filtering(gene_name, gene_strand, annotation_exons, annota
     for junc_cluster in junctions_clusters:
         if len(junc_cluster) == 0:
             continue
-        junction_set = f"{chr}:{junc_cluster[0][0]}-{junc_cluster[0][1]}"
-        for read_junc in junc_cluster:
+        junc_cluster_sorted = sorted(junc_cluster, key=lambda x: (x[0], x[1]))
+        junction_set = f"{chr}:{junc_cluster_sorted[0][0]}-{junc_cluster_sorted[0][1]}"
+        for read_junc in junc_cluster_sorted:
             junction_start = read_junc[0]
             junction_end = read_junc[1]
             gt_ag_tag = read_junc[2]
@@ -837,6 +886,17 @@ reads_exons = None
 reads_introns = None
 dna_vcfs = None
 rna_vcfs = None
+
+
+def _init_worker(pos, tags, exons, introns, dna=None, rna=None):
+    """Initializer for ProcessPoolExecutor workers: sets global shared data."""
+    global reads_positions, reads_tags, reads_exons, reads_introns, dna_vcfs, rna_vcfs
+    reads_positions = pos
+    reads_tags = tags
+    reads_exons = exons
+    reads_introns = introns
+    dna_vcfs = dna
+    rna_vcfs = rna
 
 def analyze(annotation_file, bam_file, reference_file, output_prefix, min_count, gene_types, threads, no_gtag, min_junctions, cluster_with_exons):
     global reads_positions, reads_tags, reads_exons, reads_introns, dna_vcfs, rna_vcfs
@@ -890,7 +950,11 @@ def analyze(annotation_file, bam_file, reference_file, output_prefix, min_count,
 
     print(f"Total genes to be analyzed: {len(gene_data_list)}")
     start_time = time.time()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
+    with concurrent.futures.ProcessPoolExecutor(
+        max_workers=threads,
+        initializer=_init_worker,
+        initargs=(reads_positions, reads_tags, reads_exons, reads_introns),
+    ) as executor:
         futures = [executor.submit(analyze_gene, *gene_data) for gene_data in gene_data_list]
         for future in concurrent.futures.as_completed(futures):
             gene_ase_events = future.result()
@@ -931,17 +995,14 @@ def analyze(annotation_file, bam_file, reference_file, output_prefix, min_count,
             f.write(event.__str__() + "\n")
             if not no_gtag and not event.gt_ag_tag:
                 continue
-            if gname not in asj_genes:
-                asj_genes[gname] = [event.chr, event.p_value, event.sor]
-            else:
-                if event.p_value < asj_genes[gname][1]:
-                    asj_genes[gname] = [event.chr, event.p_value, event.sor]
+            if gname not in asj_genes or is_better_gene_event(event, asj_genes[gname]):
+                asj_genes[gname] = event
     print(f"number of genes with allele-specific junctions: {len(asj_genes.keys())}")
     with open(output_prefix + ".asj_gene.tsv", "w") as f:
         f.write(f"#Gene_name\tChr\tP_value\tSOR\n")
-        for gene_name in asj_genes:
-            chr, pvalue, sor = asj_genes[gene_name]
-            f.write(f"{gene_name}\t{chr}\t{pvalue}\t{sor}\n")
+        for gene_name in sorted(asj_genes):
+            event = asj_genes[gene_name]
+            f.write(f"{gene_name}\t{event.chr}\t{event.p_value}\t{event.sor}\n")
 
 def analyze_with_filtering(annotation_file, bam_file, reference_file, output_prefix, min_count, gene_types, threads, no_gtag, min_junctions, cluster_with_exons, dna_vcfs_in, rna_vcfs_in):
     global reads_positions, reads_tags, reads_exons, reads_introns, dna_vcfs, rna_vcfs
@@ -995,7 +1056,11 @@ def analyze_with_filtering(annotation_file, bam_file, reference_file, output_pre
     print(f"Total genes to be analyzed: {len(gene_data_list)}")
 
     start_time = time.time()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
+    with concurrent.futures.ProcessPoolExecutor(
+        max_workers=threads,
+        initializer=_init_worker,
+        initargs=(reads_positions, reads_tags, reads_exons, reads_introns, dna_vcfs, rna_vcfs),
+    ) as executor:
         futures = [executor.submit(analyze_gene_with_filtering, *gene_data) for gene_data in gene_data_list]
         for future in concurrent.futures.as_completed(futures):
             gene_ase_events = future.result()
@@ -1036,27 +1101,34 @@ def analyze_with_filtering(annotation_file, bam_file, reference_file, output_pre
             f.write(event.__str__() + "\n")
             if not no_gtag and not event.gt_ag_tag:
                 continue
-            if gname not in asj_genes:
-                asj_genes[gname] = [event.chr, event.p_value, event.sor]
-            else:
-                if event.p_value < asj_genes[gname][1]:
-                    asj_genes[gname] = [event.chr, event.p_value, event.sor]
+            if gname not in asj_genes or is_better_gene_event(event, asj_genes[gname]):
+                asj_genes[gname] = event
     print(f"number of genes with allele-specific junctions: {len(asj_genes.keys())}")
     with open(output_prefix + ".asj_gene.tsv", "w") as f:
         f.write(f"#Gene_name\tChr\tP_value\tSOR\n")
-        for gene_name in asj_genes:
-            chr, pvalue, sor = asj_genes[gene_name]
-            f.write(f"{gene_name}\t{chr}\t{pvalue}\t{sor}\n")
+        for gene_name in sorted(asj_genes):
+            event = asj_genes[gene_name]
+            f.write(f"{gene_name}\t{event.chr}\t{event.p_value}\t{event.sor}\n")
 
 
 if __name__ == "__main__":
     parse = argparse.ArgumentParser()
     parse.add_argument("-a", "--annotation_file", help="Annotation file in GFF3 or GTF format", required=True)
     parse.add_argument("-b", "--bam_file", help="BAM file", required=True)
-    parse.add_argument("--dna_vcf", help="DNA VCF file", required=False)
-    parse.add_argument("--rna_vcf", help="RNA VCF file", required=False)
-    parse.add_argument("--min_junctions", help="Minimum number of junctions to be considered", default=2, type=int)
-    parse.add_argument("--cluster_with_exons", action="store_true", help="Cluster junctions with exons", default=False)
+    parse.add_argument("--dna_vcf",
+                       help="DNA VCF file used with --rna_vcf to filter events by phased genomic variants",
+                       required=False)
+    parse.add_argument("--rna_vcf",
+                       help="RNA phased VCF file from longcallR used with --dna_vcf (must be provided together)",
+                       required=False)
+    parse.add_argument("--min_junctions",
+                       help="Minimum intron count in a read to keep it for ASJ analysis",
+                       default=2,
+                       type=int)
+    parse.add_argument("--cluster_with_exons",
+                       action="store_true",
+                       help="Include exon boundary consistency when clustering nearby junctions into one event",
+                       default=False)
     parse.add_argument("-f", "--reference", help="Reference genome file", required=True)
     parse.add_argument("-o", "--output_prefix",
                        help="prefix of output differential splicing file and allele-specific junctions file",
@@ -1064,10 +1136,16 @@ if __name__ == "__main__":
     parse.add_argument("-t", "--threads", help="Number of threads", default=1, type=int)
     parse.add_argument("-g", "--gene_types", type=str, nargs="+", default=["protein_coding", "lncRNA"],
                        help='Gene types to be analyzed. Default is ["protein_coding", "lncRNA"]', )
-    parse.add_argument("-m", "--min_sup", help="Minimum support of phased reads for exon or junction", default=10,
+    parse.add_argument("-m", "--min_sup",
+                       help="Minimum phased-read support required for each exon/junction event",
+                       default=10,
                        type=int)
-    parse.add_argument("--no_gtag", action="store_true", help="Do not filter read junction with GT-AG signal")
+    parse.add_argument("--no_gtag",
+                       action="store_true",
+                       help="Disable GT-AG splice motif filtering on read-derived junctions")
     args = parse.parse_args()
+    if (args.dna_vcf is None) ^ (args.rna_vcf is None):
+        parse.error("--dna_vcf and --rna_vcf must be provided together")
     if args.dna_vcf and args.rna_vcf:
         dna_vcfs = load_dna_vcf(args.dna_vcf)
         rna_vcfs = load_longcallR_phased_vcf(args.rna_vcf, with_dp_af=False)
@@ -1076,4 +1154,3 @@ if __name__ == "__main__":
     else:
         analyze(args.annotation_file, args.bam_file, args.reference, args.output_prefix, args.min_sup, args.gene_types,
             args.threads, args.no_gtag, args.min_junctions, args.cluster_with_exons)
-
