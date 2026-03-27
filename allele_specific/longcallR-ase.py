@@ -48,7 +48,7 @@ def beta_binomial_p_value(k_obs, n, mu, rho, alternative="two-sided"):
     if alternative == "two-sided":
         # Two-sided test: Sum probabilities for all outcomes with P <= P(k_obs)
         pmf_values = [bb.pmf(k) for k in range(n + 1)]
-        p_value = sum(p for p in pmf_values if p <= p_obs)
+        p_value = sum(p for p in pmf_values if p <= p_obs + 1e-15)
     elif alternative == "greater":
         # One-sided (greater): Sum probabilities for k >= k_obs
         p_value = bb.sf(k_obs - 1)  # sf = 1 - cdf
@@ -59,6 +59,21 @@ def beta_binomial_p_value(k_obs, n, mu, rho, alternative="two-sided"):
         raise ValueError("Invalid alternative hypothesis. Choose from 'two-sided', 'greater', 'less'.")
 
     return p_value
+
+
+def choose_best_gene(read_overlap_length, gene_starts, gene_ends):
+    candidates = [gene_id for gene_id, overlap in read_overlap_length.items() if overlap > 0]
+    if not candidates:
+        return None
+    return min(
+        candidates,
+        key=lambda gene_id: (
+            -read_overlap_length[gene_id],
+            -gene_starts.get(gene_id, 0),
+            gene_ends.get(gene_id, 0) - gene_starts.get(gene_id, 0),
+            gene_id,
+        ),
+    )
 
 
 def get_gene_regions(annotation_file, gene_types):
@@ -223,6 +238,8 @@ def assign_reads_to_gene(bam_file, merged_genes_exons):
             # query should be 1-based, left-inclusive, right-exclusive
             overlapping_intervals = trees[chromosome].overlap(start_pos + 1, end_pos + 1)
             candidate_gene_ids = [interval.data for interval in overlapping_intervals]
+            gene_starts = {interval.data: interval.begin for interval in overlapping_intervals}
+            gene_ends = {interval.data: interval.end for interval in overlapping_intervals}
 
             # parse cigar string to get the splice alignment regions
             cigar = read.cigartuples
@@ -249,12 +266,13 @@ def assign_reads_to_gene(bam_file, merged_genes_exons):
                 for splice_region in splice_regions:
                     overlap_length += sum(
                         max(0, min(splice_region[1], interval.end - 1) - max(splice_region[0], interval.begin) + 1)
-                        for interval in gene_intervals[chromosome][gene_id].overlap(*splice_region)
+                        for interval in gene_intervals[chromosome][gene_id].overlap(splice_region[0], splice_region[1] + 1)
                     )
                 read_overlap_length[gene_id] = overlap_length
             if read_overlap_length:
-                best_gene_id = max(read_overlap_length, key=read_overlap_length.get)
-                read_assignment[read.query_name] = best_gene_id
+                best_gene_id = choose_best_gene(read_overlap_length, gene_starts, gene_ends)
+                if best_gene_id is not None:
+                    read_assignment[read.query_name] = best_gene_id
     return read_assignment
 
 
@@ -270,6 +288,8 @@ def process_chunk(bam_file, chromosome, start, end, shared_tree, shared_gene_int
             # query should be 1-based, left-inclusive, right-exclusive
             overlapping_intervals = shared_tree.overlap(start_pos + 1, end_pos + 1)
             candidate_gene_ids = [interval.data for interval in overlapping_intervals]
+            gene_starts = {interval.data: interval.begin for interval in overlapping_intervals}
+            gene_ends = {interval.data: interval.end for interval in overlapping_intervals}
 
             # parse cigar string to get the splice alignment regions
             cigar = read.cigartuples
@@ -296,12 +316,13 @@ def process_chunk(bam_file, chromosome, start, end, shared_tree, shared_gene_int
                 for splice_region in splice_regions:
                     overlap_length += sum(
                         max(0, min(splice_region[1], interval.end - 1) - max(splice_region[0], interval.begin) + 1)
-                        for interval in shared_gene_intervals[gene_id].overlap(*splice_region)
+                        for interval in shared_gene_intervals[gene_id].overlap(splice_region[0], splice_region[1] + 1)
                     )
                 read_overlap_length[gene_id] = overlap_length
             if read_overlap_length:
-                best_gene_id = max(read_overlap_length, key=read_overlap_length.get)
-                read_assignment[read.query_name] = best_gene_id
+                best_gene_id = choose_best_gene(read_overlap_length, gene_starts, gene_ends)
+                if best_gene_id is not None:
+                    read_assignment[read.query_name] = best_gene_id
     return read_assignment
 
 
@@ -367,8 +388,8 @@ def load_whole_genome_phased_vcf(vcf_file):
     with pysam.VariantFile(vcf_file) as vcf:
         for record in vcf.fetch():
             gt = record.samples[0]['GT']
-            # Skip indels by checking if any alternate allele differs in length from the reference allele
-            if any(len(record.ref) != len(alt) for alt in record.alts):
+            # Skip non-SNPs (indels and MNPs)
+            if len(record.ref) != 1 or any(len(alt) != 1 for alt in record.alts):
                 continue
             # Check for only phased heterozygous variants (0|1 or 1|0)
             if gt in [(0, 1), (1, 0)] and record.samples[0].phased:
@@ -395,8 +416,8 @@ def load_dna_vcf(vcf_file):
     with pysam.VariantFile(vcf_file) as vcf:
         for record in vcf.fetch():
             gt = record.samples[0]['GT']
-            # Skip indels by checking if any alternate allele differs in length from the reference allele
-            if any(len(record.ref) != len(alt) for alt in record.alts):
+            # Skip non-SNPs (indels and MNPs)
+            if len(record.ref) != 1 or any(len(alt) != 1 for alt in record.alts):
                 continue
             # Check for heterozygous variants (0/1 or 1/0 or 0|1 or 1|0)
             if gt in [(0, 1), (1, 0)]:
@@ -423,8 +444,8 @@ def load_longcallR_phased_vcf(vcf_file, with_dp_af = False):
             if 'PASS' not in record.filter.keys():
                 continue
             gt = record.samples[0]['GT']
-            # Skip indels by checking if any alternate allele differs in length from the reference allele
-            if any(len(record.ref) != len(alt) for alt in record.alts):
+            # Skip non-SNPs (indels and MNPs)
+            if len(record.ref) != 1 or any(len(alt) != 1 for alt in record.alts):
                 continue
             # Check for only phased heterozygous variants (0|1 or 1|0)
             if gt in [(0, 1), (1, 0)] and record.samples[0].phased:
@@ -444,7 +465,7 @@ def load_longcallR_phased_vcf(vcf_file, with_dp_af = False):
 def get_reads_tag(bam_file, chr, start_pos, end_pos):
     reads_tag = {}
     with pysam.AlignmentFile(bam_file, "rb") as f:
-        for read in f.fetch(chr, start_pos, end_pos):
+        for read in f.fetch(chr, start_pos - 1, end_pos):  # start_pos is 1-based, pysam expects 0-based
             PS = read.get_tag("PS") if read.has_tag("PS") else None
             HP = read.get_tag("HP") if read.has_tag("HP") else None
             reads_tag[read.query_name] = {"PS": PS, "HP": HP}
@@ -512,7 +533,11 @@ def calculate_ase_pvalue_pat_mat(bam_file, gene_id, gene_name, gene_region, min_
     h1_reads = [rname for rname in ps_reads if reads_tag[rname]["HP"] == 1]
     h2_reads = [rname for rname in ps_reads if reads_tag[rname]["HP"] == 2]
 
-    ps_variant_pos = [int(pos.split(":")[1]) - 1 for pos in ps_variants]  # 0-based
+    ps_variant_pos = [
+        int(pos.split(":")[1]) - 1
+        for pos in ps_variants
+        if pos.split(":")[0] == gene_region["chr"]
+    ]  # 0-based
     reads_pat_mat_cnt = defaultdict(
         lambda: {"pat": 0, "mat": 0})  # key: read name, value: {paternal: count, maternal: count}
     for pileupcolumn in pysam.AlignmentFile(bam_file, "rb").pileup(gene_region["chr"], gene_region["start"] - 1,
@@ -523,11 +548,11 @@ def calculate_ase_pvalue_pat_mat(bam_file, gene_id, gene_name, gene_region, min_
             if not pileup_read.is_del and not pileup_read.is_refskip:
                 read_name = pileup_read.alignment.query_name
                 if read_name in ps_reads:
-                    base = pileup_read.alignment.query_sequence[pileup_read.query_position]
+                    base = pileup_read.alignment.query_sequence[pileup_read.query_position].upper()
                     # wg_vcfs is 1-based, pileupcolumn.pos is 0-based
-                    if base in wg_vcfs[f"{gene_region['chr']}:{pileupcolumn.pos + 1}"]["pat"]:
+                    if base == wg_vcfs[f"{gene_region['chr']}:{pileupcolumn.pos + 1}"]["pat"]:
                         reads_pat_mat_cnt[read_name]["pat"] += 1
-                    elif base in wg_vcfs[f"{gene_region['chr']}:{pileupcolumn.pos + 1}"]["mat"]:
+                    elif base == wg_vcfs[f"{gene_region['chr']}:{pileupcolumn.pos + 1}"]["mat"]:
                         reads_pat_mat_cnt[read_name]["mat"] += 1
                     else:
                         continue
@@ -588,7 +613,8 @@ def calculate_ase_pvalue_filtering(bam_file, gene_id, gene_name, gene_region, mi
         if ctg_pos in dna_vcfs:
             depth = int(snp.split(":")[2])
             allele_fraction = float(snp.split(":")[3])
-            alt_cnt = int(depth * allele_fraction)
+            alt_cnt = int(round(depth * allele_fraction))
+            alt_cnt = max(0, min(depth, alt_cnt))
             p_value_ase_allele = beta_binomial_p_value(alt_cnt, depth, 0.5, overdispersion, alternative='two-sided')
             if depth >= min_count and p_value_ase_allele < 0.05:
                 overlapped_cnt += 1
@@ -620,7 +646,10 @@ def analyze_ase_genes(annotation_file, bam_file, out_file, threads, gene_types, 
             pass_idx.append(idx)
             p_values.append(p_value)
     print(f"number of genes with at least {min_support} reads: {len(pass_idx)}")
-    reject, adjusted_p_values, _, _ = multipletests(p_values, alpha=0.05, method='fdr_bh')
+    if p_values:
+        reject, adjusted_p_values, _, _ = multipletests(p_values, alpha=0.05, method='fdr_bh')
+    else:
+        adjusted_p_values = []
     with open(out_file, "w") as f:
         f.write("#Gene_name\tChr\tPS\tH1\tH2\tP_value\tlogFC\n")
         for pi in range(len(pass_idx)):
@@ -660,7 +689,10 @@ def analyze_ase_genes_pat_mat(annotation_file, bam_file, vcf_file1, vcf_file2, o
             pass_idx.append(idx)
             p_values.append(p_value)
     print(f"number of genes with at least {min_support} reads: {len(pass_idx)}")
-    reject, adjusted_p_values, _, _ = multipletests(p_values, alpha=0.05, method='fdr_bh')
+    if p_values:
+        reject, adjusted_p_values, _, _ = multipletests(p_values, alpha=0.05, method='fdr_bh')
+    else:
+        adjusted_p_values = []
     with open(out_file, "w") as f:
         f.write("#Gene_name\tChr\tPS\tH1\tH2\tP_value\tH1_Paternal\tH1_Maternal\tH2_Paternal\tH2_Maternal\tlogFC\n")
         for pi in range(len(pass_idx)):
@@ -700,7 +732,10 @@ def analyze_ase_genes_with_filtering(annotation_file, bam_file, vcf_file1, vcf_f
             pass_idx.append(idx)
             p_values.append(p_value)
     print(f"number of genes with at least {min_support} reads: {len(pass_idx)}")
-    reject, adjusted_p_values, _, _ = multipletests(p_values, alpha=0.05, method='fdr_bh')
+    if p_values:
+        reject, adjusted_p_values, _, _ = multipletests(p_values, alpha=0.05, method='fdr_bh')
+    else:
+        adjusted_p_values = []
     with open(out_file, "w") as f:
         f.write("#Gene_name\tChr\tPS\tH1\tH2\tP_value\tlogFC\n")
         for pi in range(len(pass_idx)):
