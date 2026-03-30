@@ -67,12 +67,8 @@ git clone https://github.com/huangnengCSU/longcallR.git
 cd longcallR
 cargo build --release
 
-# Temporarily add to your PATH
-export PATH="$PATH:$(pwd)/target/release"
-
-# Permanently add to PATH
-echo 'export PATH="$PATH:$(pwd)/target/release"' >> ~/.bashrc
-source ~/.bashrc
+INSTALL_DIR="$(pwd)/target/release"
+export PATH="$PATH:$INSTALL_DIR"
 
 # Check Installation
 longcallR -h
