@@ -148,7 +148,7 @@ The results of manuscript can be found and reproduced using the data and scripts
 
 ## Citation
 If you use LongcallR in your work or analysis, please cite the preprint:
-> Neng Huang, Human Pangenome Reference Consortium, Heng Li, SNP calling, haplotype phasing and allele-specific analysis with long RNA-seq reads. *bioRxiv*, 2025. [doi.org/10.1101/2025.05.26.656191](https://doi.org/10.1101/2025.05.26.656191)
+> Neng Huang, Heng Li, Human Pangenome Reference Consortium, SNP calling, haplotype phasing and allele-specific analysis with long RNA-seq reads. *nature methods*, 2026. [https://doi.org/10.1038/s41592-026-03045-6](https://doi.org/10.1038/s41592-026-03045-6)
 
 ## Update Log
 
