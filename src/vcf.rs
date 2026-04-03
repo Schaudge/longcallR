@@ -326,10 +326,16 @@ pub fn load_vcf(
     for result in reader.records() {
         let record = result.unwrap();
         if record.filters().is_pass(&header).unwrap() && record.reference_bases().len() == 1 {
-            for alt in record.alternate_bases().iter() {
-                if alt.unwrap().len() != 1 {
-                    continue;
-                }
+            let alternate_bases = record.alternate_bases();
+            if alternate_bases.len() != 1 {
+                continue;
+            }
+            let alt0 = match alternate_bases.iter().next() {
+                Some(Ok(alt)) => alt,
+                _ => continue,
+            };
+            if alt0.len() != 1 {
+                continue;
             }
             let chr = record.reference_sequence_name();
             let pos = record.variant_start().unwrap().unwrap().get();
@@ -409,6 +415,15 @@ pub fn get_genotype_quality_phase_from_vcf(
     let mut reader = bcf::Reader::from_path(vcf_path).unwrap();
     for result in reader.records() {
         let record = result.unwrap();
+        let alleles = record.alleles();
+        // longcallR direct haplotagging is SNP-base-centric; skip non-SNV records
+        // (indels / symbolic alleles) to avoid mismatched interpretation at indel loci.
+        if alleles.len() != 2 {
+            continue;
+        }
+        if alleles[0].len() != 1 || alleles[1].len() != 1 || alleles[1] == b"*" || alleles[1].starts_with(b"<") {
+            continue;
+        }
         let rid = record.rid().unwrap();
         let chr = std::str::from_utf8(record.header().rid2name(rid).unwrap()).unwrap();
         let pos = record.pos(); // 0-based position

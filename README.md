@@ -148,6 +148,9 @@ If you use LongcallR in your work or analysis, please cite the preprint:
 
 ## Update Log
 
+### 2.0.1 - 2026-04-03
+- Improved robustness of `--direct-haplotag` mode: non-SNV records (indels, spanning deletions, symbolic alleles) in the input VCF are now filtered out before haplotagging to prevent mismatched interpretation at indel loci.
+
 ### 2.0.0 - 2026-03-27
 - Added support for direct haplotagging from a pre-phased VCF using `--input-vcf --direct-haplotag`.
 - Reimplemented the functionality of longcallR-ase.py and longcallR-asj.py in Rust and integrated them into longcallR as the `longcallR ase` and `longcallR asj` subcommands. The Python implementations will be removed in a future release.
